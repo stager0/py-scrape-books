@@ -1,6 +1,8 @@
 import scrapy
 from scrapy.http import Response
 
+from scrape_books.items import ScrapeBooksItem
+
 
 class BooksSpider(scrapy.Spider):
     name = "books"
@@ -17,12 +19,12 @@ class BooksSpider(scrapy.Spider):
         print(urls)
         for url in urls:
             absolute_url = response.urljoin(url)
-            yield response.follow(url=absolute_url, callback=self.parce_book)
+            yield response.follow(url=absolute_url, callback=self.parse_book)
 
-        if next_page_link is not None or ["10", 10] in next_page_link:
+        if next_page_link is not None:
             yield response.follow(next_page_link, callback=self.parse)
 
-    def parce_book(self, response: Response):
+    def parse_book(self, response: Response):
         rating = response.css("p.star-rating::attr(class)").get().split(" ")[1]
         if rating:
             if rating == "One":
@@ -35,21 +37,21 @@ class BooksSpider(scrapy.Spider):
                 rating = 4
             elif rating == "Five":
                 rating = 5
+        book = ScrapeBooksItem()
+        book["title"] = response.css("h1::text").get()
+        book["price"] = response.css("p.price_color::text").get()
+        book["amount_in_stock"] = response.css(
+            "p.instock.availability::text"
+        ).re_first(r"\d+"),
+        book["rating"] = rating
+        book["category"] = response.css(
+            "ul.breadcrumb li a::text"
+        ).getall()[2]
+        book["description"] = response.css(
+            ".product_page p:not([class])::text"
+        ).get()
+        book["upc"] = response.css(
+            "table.table-striped tr td::text"
+        ).get()
 
-        yield {
-            "title": response.css("h1::text").get(),
-            "price": response.css("p.price_color::text").get(),
-            "amount_in_stock": response.css(
-                "p.instock.availability::text"
-            ).re_first(r"\d+"),
-            "rating": rating,
-            "category": response.css(
-                "ul.breadcrumb li a::text"
-            ).getall()[2],
-            "description": response.css(
-                ".product_page p:not([class])::text"
-            ).get(),
-            "upc": response.css(
-                "table.table-striped tr td::text"
-            ).get()
-        }
+        yield book
