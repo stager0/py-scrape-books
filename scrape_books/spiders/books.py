@@ -42,7 +42,7 @@ class BooksSpider(scrapy.Spider):
         book["price"] = response.css("p.price_color::text").get()
         book["amount_in_stock"] = response.css(
             "p.instock.availability::text"
-        ).re_first(r"\d+"),
+        ).re_first(r"\d+")
         book["rating"] = rating
         book["category"] = response.css(
             "ul.breadcrumb li a::text"
